@@ -94,7 +94,7 @@ class Eagle(object):
         return self.post_cmd('get_message')
 
     def confirm_message(self): #Need args
-        raise NotImplementedError()
+        raise NotImplementedError('uEagle is read-only for now.')
 
     def get_current_summation(self):
         return self.post_cmd('get_current_summation')
@@ -115,7 +115,7 @@ class Eagle(object):
         return self.post_cmd('get_history_data', **kw)
 
     def set_schedule(self): #Need args
-        raise NotImplementedError()
+        raise NotImplementedError('uEagle is read-only for now.')
 
     def get_schedule(self, event=None):
         #SAFETY:
@@ -126,7 +126,7 @@ class Eagle(object):
         return self.post_cmd('get_schedule', Event=event)
 
     def reboot(self): #Need args
-        raise NotImplementedError()
+        raise NotImplementedError('uEagle is read-only for now.')
 
     def get_demand_peaks(self):
         return self.post_cmd('get_demand_peaks')
