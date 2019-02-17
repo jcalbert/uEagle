@@ -15,19 +15,23 @@ CMD_TOP_TEMPLATE = r'''<Command>\n
                    <Name>{0!s}</Name>\n
                    <Format>JSON</Format>'''
 
+#Options
+SAFETY_ON = False
+
 #Enumerations
-PROTOCOL_VALS = ('ZigBee',)
-STATUS_VALS   = ('Initializing', 'Network', 'Discovery', 'Joining',
-                 'Join: Fail', 'Join: Success', 'Authenticating',
-                 'Authenticating: Success', 'Authenticating: Fail', 'Connected',
-                 'Disconnected', 'Rejoining')
-YESNO_VALS    = ('Y', 'N')
-PRIORITY_VALS = ('Low', 'Medium', 'High', 'Critical')
-QUEUE_VALS    = ('Active', 'Cancel Pending')
-EVENT_VALS    = ('time', 'message', 'price', 'summation', 'demand',
-                 'scheduled_prices', 'profile_data', 'billing_period',
-                 'block_period')
-TARGET_VALS   = ('Zigbee', 'Eagle', 'All')
+if SAFETY_ON:
+    PROTOCOL_VALS = ('ZigBee',)
+    STATUS_VALS   = ('Initializing', 'Network', 'Discovery', 'Joining',
+                     'Join: Fail', 'Join: Success', 'Authenticating',
+                     'Authenticating: Success', 'Authenticating: Fail',
+                     'Connected', 'Disconnected', 'Rejoining')
+    YESNO_VALS    = ('Y', 'N')
+    PRIORITY_VALS = ('Low', 'Medium', 'High', 'Critical')
+    QUEUE_VALS    = ('Active', 'Cancel Pending')
+    EVENT_VALS    = ('', 'time', 'message', 'price', 'summation', 'demand',
+                     'scheduled_prices', 'profile_data', 'billing_period',
+                     'block_period')
+    TARGET_VALS   = ('Zigbee', 'Eagle', 'All')
 
 
 from sys import platform
@@ -109,10 +113,9 @@ class Eagle(object):
             kw['EndTime'] = hex(int(end_time - EPOCH_DELTA))
 
         if frequency is not None:
-            #SAFETY:
-            #if frequency > 0xffff or frequency < 0:
-            #   raise ValueError('frequency must be between 0 and 65535 seconds')
-            #kw['Frequency'] = min(hex(int(frequency)), 0xffff)
+            if SAFETY_ON:
+                if frequency > 0xffff or frequency < 0:
+                    raise ValueError('frequency must be between 0 and 65535 seconds')
             kw['Frequency'] = hex(int(frequency))
 
         return self.post_cmd('get_history_data', **kw)
@@ -121,11 +124,11 @@ class Eagle(object):
         raise NotImplementedError('uEagle is read-only for now.')
 
     def get_schedule(self, event=None):
-        #SAFETY:
         if event is None:
             event = ''
-        #elif not event in EVENT_VALS:
-        #   raise ValueError('\'{}\' is not a valid event'.format(event))
+
+        if SAFETY_ON and event not in EVENT_VALS:
+           raise ValueError('\'{}\' is not a valid event'.format(event))
         return self.post_cmd('get_schedule', Event=event)
 
     def reboot(self): #Need args
