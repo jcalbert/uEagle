@@ -3,13 +3,13 @@ __copyright__ = ''
 __license__ = ''
 __version__ = ''
 
-
 from ubinascii import b2a_base64
 import urequests
 import ujson
 import utime
 
-ADDR_TEMPLATE = r'http://eagle-{0}.local/cgi-bin/post_manager'
+MDNS_TEMPLATE = r'http://eagle-{0}.local/cgi-bin/post_manager'
+ADDR_TEMPLATE = r'http://{0}/cgi-bin/post_manager'
 
 CMD_TOP_TEMPLATE = r'''<Command>\n
                    <Name>{0!s}</Name>\n
@@ -40,12 +40,15 @@ del(platform)
 DEBUG = True
 
 class Eagle(object):
-    def __init__(self, cloud_id, install_code):
-        self.addr = ADDR_TEMPLATE.format(cloud_id)
+    def __init__(self, cloud_id, install_code, address=None):
         self.auth = encode_basic_auth(cloud_id, install_code)
-
         self._headers = {'Authorization':self.auth,
-                        'Content-Type'  :'application/xml'}
+                         'Content-Type'  :'application/xml'}
+
+        if address is not None:
+            self.addr = ADDR_TEMPLATE.format(address)
+        else:
+            self.addr = MDNS_TEMPLATE.format(cloud_id)
 
     def make_cmd(self, command, **kws):
         cmd_str  = CMD_TOP_TEMPLATE.format(command)
