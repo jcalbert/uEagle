@@ -118,6 +118,9 @@ def process_data(d):
     for k,v in d.items():
         if isinstance(v,dict):
             process_data(v)
+        elif isinstance(v,list):
+            for vi in v:
+                process_data(vi)
 
     #Summation and demand conversion
     if 'Multiplier' in d:
@@ -153,7 +156,7 @@ def convert_price(d):
 def TEMP_RESPONSE_FIX(s):
     '''
     The EAGLE API provides malformed responses for some commands.  This
-    function tries to fix them (until the firmware is patched)
+    function tries to fix them (until the firmware is patched).
     '''
     if s.startswith('\"HistoryData\"'):
         return '{' + s + '}'
