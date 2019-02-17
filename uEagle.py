@@ -40,11 +40,16 @@ class Eagle(object):
         return cmd_str
 
     def post_cmd(self, command, **kws):
-        data = self.make_cmd(command, **kws)
-        response =  urequests.post(self.addr,
-                                   headers=self._headers,
-                                   data=data)
-        return ujson.loads(response.text)
+        post_data = self.make_cmd(command, **kws)
+        response = urequests.post(self.addr,
+                                  headers=self._headers,
+                                  data=post_data)
+
+        response_text = TEMP_RESPONSE_FIX(response.text)
+
+        data = ujson.loads(response_text)
+        process_data(data)
+        return data
 
     #No extra args
     def get_network_info(self):
@@ -71,8 +76,20 @@ class Eagle(object):
     def get_current_summation(self):
         return self.post_cmd('get_current_summation')
 
-    def get_history_data(self): #Need args
-        raise NotImplementedError()
+    def get_history_data(self, start_time, end_time=None, frequency=None): #Need args
+        kw = {'StartTime' : hex(int(start_time - EPOCH_DELTA))}
+
+        if end_time is not None:
+            kw['EndTime'] = hex(int(end_time - EPOCH_DELTA))
+
+        if frequency is not None:
+            #if frequency > 0xffff or frequency < 0:
+            #   raise ValueError('frequency must be between 0 and 65535 seconds')
+            #kw['Frequency'] = min(hex(int(frequency)), 0xffff)
+            kw['Frequency'] = hex(int(frequency))
+
+        return self.post_cmd('get_history_data', **kw)
+#        raise NotImplementedError()
 
     def set_schedule(self): #Need args
         raise NotImplementedError()
@@ -92,7 +109,7 @@ def encode_basic_auth(username, password):
     formated = b2a_base64(formated)[:-1].decode("ascii")
     return 'Basic {}'.format(formated)
 
-def convert_response(d):
+def process_data(d):
     '''
     Given a response dict from the EAGLE, interpret common data
     types / apply conversions.
@@ -100,7 +117,8 @@ def convert_response(d):
     #Handle nested dictionaries
     for k,v in d.items():
         if isinstance(v,dict):
-            convert_response(v)
+            process_data(v)
+
     #Summation and demand conversion
     if 'Multiplier' in d:
         convert_demand(d)
@@ -131,6 +149,16 @@ def convert_price(d):
     d['Currency'] = int(d['Currency'])
 
     del(d['TrailingDigits'])
+
+def TEMP_RESPONSE_FIX(s):
+    '''
+    The EAGLE API provides malformed responses for some commands.  This
+    function tries to fix them (until the firmware is patched)
+    '''
+    if s.startswith('\"HistoryData\"'):
+        return '{' + s + '}'
+
+    return s
 
 #notes
 #More recent API (1.1) supports command list_network
