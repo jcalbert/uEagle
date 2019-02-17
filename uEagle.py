@@ -15,12 +15,29 @@ CMD_TOP_TEMPLATE = r'''<Command>\n
                    <Name>{0!s}</Name>\n
                    <Format>JSON</Format>'''
 
+#Enumerations
+PROTOCOL_VALS = ('ZigBee',)
+STATUS_VALS   = ('Initializing', 'Network', 'Discovery', 'Joining',
+                 'Join: Fail', 'Join: Success', 'Authenticating',
+                 'Authenticating: Success', 'Authenticating: Fail', 'Connected',
+                 'Disconnected', 'Rejoining')
+YESNO_VALS    = ('Y', 'N')
+PRIORITY_VALS = ('Low', 'Medium', 'High', 'Critical')
+QUEUE_VALS    = ('Active', 'Cancel Pending')
+EVENT_VALS    = ('time', 'message', 'price', 'summation', 'demand',
+                 'scheduled_prices', 'profile_data', 'billing_period',
+                 'block_period')
+TARGET_VALS   = ('Zigbee', 'Eagle', 'All')
+
+
 from sys import platform
 if platform in ('linux', 'unix'):
     EPOCH_DELTA = 946684800
 else:
     EPOCH_DELTA = 0
 del(platform)
+
+DEBUG = True
 
 class Eagle(object):
     def __init__(self, cloud_id, install_code):
@@ -46,8 +63,14 @@ class Eagle(object):
                                   data=post_data)
 
         response_text = TEMP_RESPONSE_FIX(response.text)
-
-        data = ujson.loads(response_text)
+        if DEBUG:
+            try:
+                data = ujson.loads(response_text)
+            except:
+                print(response_text)
+                assert(0)
+        else:
+            data = ujson.loads(response_text)
         process_data(data)
         return data
 
@@ -83,19 +106,24 @@ class Eagle(object):
             kw['EndTime'] = hex(int(end_time - EPOCH_DELTA))
 
         if frequency is not None:
+            #SAFETY:
             #if frequency > 0xffff or frequency < 0:
             #   raise ValueError('frequency must be between 0 and 65535 seconds')
             #kw['Frequency'] = min(hex(int(frequency)), 0xffff)
             kw['Frequency'] = hex(int(frequency))
 
         return self.post_cmd('get_history_data', **kw)
-#        raise NotImplementedError()
 
     def set_schedule(self): #Need args
         raise NotImplementedError()
 
-    def get_schedule(self): #Need args
-        raise NotImplementedError()
+    def get_schedule(self, event=None):
+        #SAFETY:
+        if event is None:
+            event = ''
+        #elif not event in EVENT_VALS:
+        #   raise ValueError('\'{}\' is not a valid event'.format(event))
+        return self.post_cmd('get_schedule', Event=event)
 
     def reboot(self): #Need args
         raise NotImplementedError()
@@ -160,7 +188,8 @@ def TEMP_RESPONSE_FIX(s):
     '''
     if s.startswith('\"HistoryData\"'):
         return '{' + s + '}'
-
+    elif s.startswith('\"ScheduleList\"'):
+        return '{' + s + '}'
     return s
 
 #notes
