@@ -41,7 +41,6 @@ else:
     EPOCH_DELTA = 0
 del(platform)
 
-DEBUG = True
 
 class Eagle(object):
     def __init__(self, cloud_id, install_code, address=None):
@@ -70,14 +69,7 @@ class Eagle(object):
                                   data=post_data)
 
         response_text = TEMP_RESPONSE_FIX(response.text)
-        if DEBUG:
-            try:
-                data = ujson.loads(response_text)
-            except:
-                print(response_text)
-                assert(0)
-        else:
-            data = ujson.loads(response_text)
+        data = ujson.loads(response_text)
         process_data(data)
         return data
 
