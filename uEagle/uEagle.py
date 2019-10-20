@@ -1,8 +1,3 @@
-__author__ = 'Joseph Albert'
-__copyright__ = ''
-__license__ = ''
-__version__ = ''
-
 from ubinascii import b2a_base64
 import urequests
 import ujson
