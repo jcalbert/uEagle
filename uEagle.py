@@ -15,7 +15,7 @@ CMD_TOP_TEMPLATE = r'''<Command>\n
                    <Format>JSON</Format>'''
 
 #Options
-SAFETY_ON = False
+SAFETY_ON = True
 
 #Enumerations
 if SAFETY_ON:
@@ -147,16 +147,16 @@ def process_data(d):
         convert_price(d)
 
     if 'TimeStamp' in d:
-        d['TimeStamp'] = time.localtime(int(d['TimeStamp']) + EPOCH_DELTA)
+        d['TimeStamp'] = time.localtime(int(d['TimeStamp'], 0) + EPOCH_DELTA)
 
 def convert_demand(d):
-    factor = max(int(d['Multiplier']), 1) / max(int(d['Divisor']), 1)
+    factor = max(int(d['Multiplier'], 0), 1) / max(int(d['Divisor'], 0), 1)
 
     if 'Demand' in d:
-        d['Demand'] = int(d['Demand']) * factor
+        d['Demand'] = int(d['Demand'], 0) * factor
     else:
-        d['SummationDelivered'] = int(d['SummationDelivered']) * factor
-        d['SummationReceived'] = int(d['SummationReceived']) * factor
+        d['SummationDelivered'] = int(d['SummationDelivered'], 0) * factor
+        d['SummationReceived'] = int(d['SummationReceived'], 0) * factor
 
     del(d['Multiplier'])
     del(d['Divisor'])
@@ -165,8 +165,8 @@ def convert_demand(d):
     del(d['SuppressLeadingZero'])
 
 def convert_price(d):
-    d['Price'] = int(d['Price']) / 10**int(d['TrailingDigits'])
-    d['Currency'] = int(d['Currency'])
+    d['Price'] = int(d['Price'], 0) / 10**int(d['TrailingDigits'], 0)
+    d['Currency'] = int(d['Currency'], 0)
 
     del(d['TrailingDigits'])
 
