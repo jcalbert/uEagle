@@ -3,13 +3,12 @@ __copyright__ = ''
 __license__ = ''
 __version__ = ''
 
-from ubinascii import b2a_base64
-import urequests
-import ujson
-import utime
+import requests
+import json
+import time
 
-MDNS_TEMPLATE = r'http://eagle-{0}.local/cgi-bin/post_manager'
-ADDR_TEMPLATE = r'http://{0}/cgi-bin/post_manager'
+MDNS_TEMPLATE = r'http://{0}:{1}@eagle-{0}.local/cgi-bin/post_manager'
+ADDR_TEMPLATE = r'http://{0}:{1}@{2}/cgi-bin/post_manager'
 
 CMD_TOP_TEMPLATE = r'''<Command>\n
                    <Name>{0!s}</Name>\n
@@ -44,14 +43,12 @@ del(platform)
 
 class Eagle(object):
     def __init__(self, cloud_id, install_code, address=None):
-        self.auth = encode_basic_auth(cloud_id, install_code)
-        self._headers = {'Authorization':self.auth,
-                         'Content-Type'  :'application/xml'}
+        self._headers = {'Content-Type'  :'application/xml'}
 
         if address is not None:
-            self.addr = ADDR_TEMPLATE.format(address)
+            self.addr = ADDR_TEMPLATE.format(cloud_id, install_code, address)
         else:
-            self.addr = MDNS_TEMPLATE.format(cloud_id)
+            self.addr = MDNS_TEMPLATE.format(cloud_id, install_code)
 
     def make_cmd(self, command, **kws):
         cmd_str  = CMD_TOP_TEMPLATE.format(command)
@@ -64,12 +61,12 @@ class Eagle(object):
 
     def post_cmd(self, command, **kws):
         post_data = self.make_cmd(command, **kws)
-        response = urequests.post(self.addr,
+        response = requests.post(self.addr,
                                   headers=self._headers,
                                   data=post_data)
 
         response_text = TEMP_RESPONSE_FIX(response.text)
-        data = ujson.loads(response_text)
+        data = json.loads(response_text)
         process_data(data)
         return data
 
@@ -120,7 +117,7 @@ class Eagle(object):
             event = ''
 
         if SAFETY_ON and event not in EVENT_VALS:
-           raise ValueError('\'{}\' is not a valid event'.format(event))
+            raise ValueError('\'{}\' is not a valid event'.format(event))
         return self.post_cmd('get_schedule', Event=event)
 
     def reboot(self): #Need args
@@ -128,12 +125,6 @@ class Eagle(object):
 
     def get_demand_peaks(self):
         return self.post_cmd('get_demand_peaks')
-
-#Courtesy of fschmi PR on micropython-lib
-def encode_basic_auth(username, password):
-    formated = b"{}:{}".format(username, password)
-    formated = b2a_base64(formated)[:-1].decode("ascii")
-    return 'Basic {}'.format(formated)
 
 def process_data(d):
     '''
@@ -156,7 +147,7 @@ def process_data(d):
         convert_price(d)
 
     if 'TimeStamp' in d:
-        d['TimeStamp'] = utime.localtime(int(d['TimeStamp']) + EPOCH_DELTA)
+        d['TimeStamp'] = time.localtime(int(d['TimeStamp']) + EPOCH_DELTA)
 
 def convert_demand(d):
     factor = max(int(d['Multiplier']), 1) / max(int(d['Divisor']), 1)
