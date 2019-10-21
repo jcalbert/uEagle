@@ -115,7 +115,7 @@ class Eagle(object):
             event = ''
 
         if SAFETY_ON and event not in EVENT_VALS:
-           raise ValueError('\'{}\' is not a valid event'.format(event))
+            raise ValueError('\'{}\' is not a valid event'.format(event))
         return self.post_cmd('get_schedule', Event=event)
 
     def reboot(self): #Need args
