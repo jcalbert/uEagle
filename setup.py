@@ -1,8 +1,6 @@
-import setuptools
-from setuptools import find_packages
+from setuptools import setup, find_packages
 from os import path
-
-import uEagle
+import sdist_upip
 
 here = path.abspath(path.dirname(__file__))
 
@@ -14,13 +12,15 @@ REQUIRED = ['urequests']
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-setuptools.setup(
+setup(
     name='micropython-uEagle',
-    version=uEagle.__version__,
+    version='0.0.1',
     packages=find_packages(),
 
     install_requires=REQUIRED,
     python_requires=REQUIRES_PYTHON,
+    cmdclass={'sdist': sdist_upip.sdist},
+
 
     # metadata to display on PyPI
     author='Joseph Albert',
