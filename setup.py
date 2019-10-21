@@ -20,6 +20,7 @@ setup(
 
     # metadata to display on PyPI
     author='Joseph Albert',
+    author_email='joe@jcalbert.com',
     description='Tool to read data from Rainforest Legacy Eagle.',
     long_description=long_description,
     keywords='rainforest eagle',
