@@ -23,6 +23,7 @@ setup(
     author_email='joe@jcalbert.com',
     description='Tool to read data from Rainforest Legacy Eagle.',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     keywords='rainforest eagle',
     url='https://github.com/jcalbert/uEagle',
     classifiers=[
