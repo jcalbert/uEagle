@@ -1,17 +1,16 @@
-from ubinascii import b2a_base64
-import urequests
-import ujson
-import utime
+import requests
+import json
+import time
 
-MDNS_TEMPLATE = r'http://eagle-{0}.local/cgi-bin/post_manager'
-ADDR_TEMPLATE = r'http://{0}/cgi-bin/post_manager'
+MDNS_TEMPLATE = r'http://{0}:{1}@eagle-{0}.local/cgi-bin/post_manager'
+ADDR_TEMPLATE = r'http://{0}:{1}@{2}/cgi-bin/post_manager'
 
 CMD_TOP_TEMPLATE = r'''<Command>\n
                    <Name>{0!s}</Name>\n
                    <Format>JSON</Format>'''
 
 #Options
-SAFETY_ON = False
+SAFETY_ON = True
 
 #Enumerations
 if SAFETY_ON:
@@ -39,14 +38,12 @@ del(platform)
 
 class Eagle(object):
     def __init__(self, cloud_id, install_code, address=None):
-        self.auth = encode_basic_auth(cloud_id, install_code)
-        self._headers = {'Authorization':self.auth,
-                         'Content-Type'  :'application/xml'}
+        self._headers = {'Content-Type'  :'application/xml'}
 
         if address is not None:
-            self.addr = ADDR_TEMPLATE.format(address)
+            self.addr = ADDR_TEMPLATE.format(cloud_id, install_code, address)
         else:
-            self.addr = MDNS_TEMPLATE.format(cloud_id)
+            self.addr = MDNS_TEMPLATE.format(cloud_id, install_code)
 
     def make_cmd(self, command, **kws):
         cmd_str  = CMD_TOP_TEMPLATE.format(command)
@@ -59,12 +56,12 @@ class Eagle(object):
 
     def post_cmd(self, command, **kws):
         post_data = self.make_cmd(command, **kws)
-        response = urequests.post(self.addr,
+        response = requests.post(self.addr,
                                   headers=self._headers,
                                   data=post_data)
 
         response_text = TEMP_RESPONSE_FIX(response.text)
-        data = ujson.loads(response_text)
+        data = json.loads(response_text)
         process_data(data)
         return data
 
@@ -151,16 +148,16 @@ def process_data(d):
         convert_price(d)
 
     if 'TimeStamp' in d:
-        d['TimeStamp'] = utime.localtime(int(d['TimeStamp']) + EPOCH_DELTA)
+        d['TimeStamp'] = time.localtime(int(d['TimeStamp'], 0) + EPOCH_DELTA)
 
 def convert_demand(d):
-    factor = max(int(d['Multiplier']), 1) / max(int(d['Divisor']), 1)
+    factor = max(int(d['Multiplier'], 0), 1) / max(int(d['Divisor'], 0), 1)
 
     if 'Demand' in d:
-        d['Demand'] = int(d['Demand']) * factor
+        d['Demand'] = int(d['Demand'], 0) * factor
     else:
-        d['SummationDelivered'] = int(d['SummationDelivered']) * factor
-        d['SummationReceived'] = int(d['SummationReceived']) * factor
+        d['SummationDelivered'] = int(d['SummationDelivered'], 0) * factor
+        d['SummationReceived'] = int(d['SummationReceived'], 0) * factor
 
     del(d['Multiplier'])
     del(d['Divisor'])
@@ -169,8 +166,8 @@ def convert_demand(d):
     del(d['SuppressLeadingZero'])
 
 def convert_price(d):
-    d['Price'] = int(d['Price']) / 10**int(d['TrailingDigits'])
-    d['Currency'] = int(d['Currency'])
+    d['Price'] = int(d['Price'], 0) / 10**int(d['TrailingDigits'], 0)
+    d['Currency'] = int(d['Currency'], 0)
 
     del(d['TrailingDigits'])
 

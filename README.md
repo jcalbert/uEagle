@@ -1,5 +1,7 @@
-# uEagle
-Micropython Rainforest EAGLE client
+# uEagle (non-micro)
+(non-)Micropython Rainforest EAGLE client
+
+This branch includes compatibility for non-uPython environments.
 
 Basic, lightweight client for accessing the local REST API of Rainforest Automation's EAGLE device.
 
