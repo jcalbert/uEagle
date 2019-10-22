@@ -121,12 +121,6 @@ class Eagle(object):
     def get_demand_peaks(self):
         return self.post_cmd('get_demand_peaks')
 
-#Courtesy of fschmi PR on micropython-lib
-def encode_basic_auth(username, password):
-    formated = b"{}:{}".format(username, password)
-    formated = b2a_base64(formated)[:-1].decode("ascii")
-    return 'Basic {}'.format(formated)
-
 def process_data(d):
     '''
     Given a response dict from the EAGLE, interpret common data
