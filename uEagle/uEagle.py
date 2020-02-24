@@ -1,6 +1,6 @@
-import requests
 import json
 import time
+import requests
 
 MDNS_TEMPLATE = r'http://{0}:{1}@eagle-{0}.local/cgi-bin/post_manager'
 ADDR_TEMPLATE = r'http://{0}:{1}@{2}/cgi-bin/post_manager'
@@ -9,10 +9,10 @@ CMD_TOP_TEMPLATE = r'''<Command>\n
                    <Name>{0!s}</Name>\n
                    <Format>JSON</Format>'''
 
-#Options
+# Options
 SAFETY_ON = True
 
-#Enumerations
+# Enumerations
 if SAFETY_ON:
     PROTOCOL_VALS = ('ZigBee',)
     STATUS_VALS   = ('Initializing', 'Network', 'Discovery', 'Joining',
@@ -33,12 +33,12 @@ if platform in ('linux', 'unix'):
     EPOCH_DELTA = 946684800
 else:
     EPOCH_DELTA = 0
-del(platform)
+del platform
 
 
 class Eagle(object):
     def __init__(self, cloud_id, install_code, address=None):
-        self._headers = {'Content-Type'  :'application/xml'}
+        self._headers = {'Content-Type': 'application/xml'}
 
         if address is not None:
             self.addr = ADDR_TEMPLATE.format(cloud_id, install_code, address)
@@ -46,7 +46,7 @@ class Eagle(object):
             self.addr = MDNS_TEMPLATE.format(cloud_id, install_code)
 
     def make_cmd(self, command, **kws):
-        cmd_str  = CMD_TOP_TEMPLATE.format(command)
+        cmd_str = CMD_TOP_TEMPLATE.format(command)
 
         for k,v in kws.items():
             cmd_str += '<{0}>{1!s}</{0}>\n'.format(k, v)
@@ -57,20 +57,19 @@ class Eagle(object):
     def post_cmd(self, command, **kws):
         post_data = self.make_cmd(command, **kws)
         response = requests.post(self.addr,
-                                  headers=self._headers,
-                                  data=post_data)
+                                 headers=self._headers,
+                                 data=post_data)
 
         response_text = TEMP_RESPONSE_FIX(response.text)
         data = json.loads(response_text)
         process_data(data)
         return data
 
-    #No extra args
     def get_network_info(self):
         return self.post_cmd('get_network_info')
 
-    def list_network(self): #Need XML interp
-        raise NotImplementedError()
+    def list_network(self):
+        raise NotImplementedError()  # No JSON support for this command
 
     def get_network_status(self):
         return self.post_cmd('get_network_status')
@@ -84,14 +83,14 @@ class Eagle(object):
     def get_message(self):
         return self.post_cmd('get_message')
 
-    def confirm_message(self): #Need args
+    def confirm_message(self):  # Needs argument: ID
         raise NotImplementedError('uEagle is read-only for now.')
 
     def get_current_summation(self):
         return self.post_cmd('get_current_summation')
 
-    def get_history_data(self, start_time, end_time=None, frequency=None): #Need args
-        kw = {'StartTime' : hex(int(start_time - EPOCH_DELTA))}
+    def get_history_data(self, start_time, end_time=None, frequency=None):
+        kw = {'StartTime': hex(int(start_time - EPOCH_DELTA))}
 
         if end_time is not None:
             kw['EndTime'] = hex(int(end_time - EPOCH_DELTA))
@@ -104,7 +103,7 @@ class Eagle(object):
 
         return self.post_cmd('get_history_data', **kw)
 
-    def set_schedule(self): #Need args
+    def set_schedule(self):  # Needs arguments: Event, Frequency, Enabled
         raise NotImplementedError('uEagle is read-only for now.')
 
     def get_schedule(self, event=None):
@@ -115,26 +114,27 @@ class Eagle(object):
             raise ValueError('\'{}\' is not a valid event'.format(event))
         return self.post_cmd('get_schedule', Event=event)
 
-    def reboot(self): #Need args
+    def reboot(self):  # Needs argument: Target
         raise NotImplementedError('uEagle is read-only for now.')
 
     def get_demand_peaks(self):
         return self.post_cmd('get_demand_peaks')
+
 
 def process_data(d):
     '''
     Given a response dict from the EAGLE, interpret common data
     types / apply conversions.
     '''
-    #Handle nested dictionaries
+    # Handle nested dictionaries
     for k,v in d.items():
-        if isinstance(v,dict):
+        if isinstance(v, dict):
             process_data(v)
-        elif isinstance(v,list):
+        elif isinstance(v, list):
             for vi in v:
                 process_data(vi)
 
-    #Summation and demand conversion
+    # Summation and demand conversion
     if 'Multiplier' in d:
         convert_demand(d)
 
@@ -144,7 +144,9 @@ def process_data(d):
     if 'TimeStamp' in d:
         d['TimeStamp'] = time.localtime(int(d['TimeStamp'], 0) + EPOCH_DELTA)
 
+
 def convert_demand(d):
+    'Parse values and remove extraneous keys from demand responses.'
     factor = max(int(d['Multiplier'], 0), 1) / max(int(d['Divisor'], 0), 1)
 
     if 'Demand' in d:
@@ -153,17 +155,20 @@ def convert_demand(d):
         d['SummationDelivered'] = int(d['SummationDelivered'], 0) * factor
         d['SummationReceived'] = int(d['SummationReceived'], 0) * factor
 
-    del(d['Multiplier'])
-    del(d['Divisor'])
-    del(d['DigitsRight'])
-    del(d['DigitsLeft'])
-    del(d['SuppressLeadingZero'])
+    del d['Multiplier']
+    del d['Divisor']
+    del d['DigitsRight']
+    del d['DigitsLeft']
+    del d['SuppressLeadingZero']
+
 
 def convert_price(d):
+    'Perform inplace hex-to-value conversion for price values.'
     d['Price'] = int(d['Price'], 0) / 10**int(d['TrailingDigits'], 0)
     d['Currency'] = int(d['Currency'], 0)
 
-    del(d['TrailingDigits'])
+    del d['TrailingDigits']
+
 
 def TEMP_RESPONSE_FIX(s):
     '''
