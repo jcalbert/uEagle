@@ -150,7 +150,10 @@ def convert_demand(d):
     factor = max(int(d['Multiplier'], 0), 1) / max(int(d['Divisor'], 0), 1)
 
     if 'Demand' in d:
-        d['Demand'] = int(d['Demand'], 0) * factor
+        demand = int(d['Demand'],0)
+        if demand > 0x7FFFFF: #Real demand is negative, use two's complement
+            demand -= 0x1000000
+        d['Demand'] = demand * factor
     else:
         d['SummationDelivered'] = int(d['SummationDelivered'], 0) * factor
         d['SummationReceived'] = int(d['SummationReceived'], 0) * factor
