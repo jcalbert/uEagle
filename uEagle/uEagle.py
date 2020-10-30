@@ -1,6 +1,7 @@
 import json
 import time
 import requests
+from struct import unpack,pack
 
 MDNS_TEMPLATE = r'http://{0}:{1}@eagle-{0}.local/cgi-bin/post_manager'
 ADDR_TEMPLATE = r'http://{0}:{1}@{2}/cgi-bin/post_manager'
@@ -151,9 +152,9 @@ def convert_demand(d):
 
     if 'Demand' in d:
         demand = int(d['Demand'],0)
-        if demand > 0x7FFFFF: #Real demand is negative, use two's complement
-            demand -= 0x1000000
-        d['Demand'] = demand * factor
+        bytes_demand=pack('>I',demand)
+        new_int_demand=unpack('>i', bytes_demand)[0]
+        d['Demand'] = new_int_demand * factor
     else:
         d['SummationDelivered'] = int(d['SummationDelivered'], 0) * factor
         d['SummationReceived'] = int(d['SummationReceived'], 0) * factor
