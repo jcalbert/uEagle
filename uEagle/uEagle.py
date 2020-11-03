@@ -149,15 +149,16 @@ def process_data(d):
 def convert_demand(d):
     'Parse values and remove extraneous keys from demand responses.'
     factor = max(int(d['Multiplier'], 0), 1) / max(int(d['Divisor'], 0), 1)
+    n_dec = int(d['DigitsRight'], 0)
 
     if 'Demand' in d:
         demand = int(d['Demand'],0)
         bytes_demand=pack('>I',demand)
         new_int_demand=unpack('>i', bytes_demand)[0]
-        d['Demand'] = new_int_demand * factor
+        d['Demand'] = round(new_int_demand*factor, n_dec)
     else:
-        d['SummationDelivered'] = int(d['SummationDelivered'], 0) * factor
-        d['SummationReceived'] = int(d['SummationReceived'], 0) * factor
+        d['SummationDelivered'] = round(int(d['SummationDelivered'], 0)*factor, n_dec)
+        d['SummationReceived'] = round(int(d['SummationReceived'], 0)*factor, n_dec)
 
     del d['Multiplier']
     del d['Divisor']
