@@ -1,6 +1,7 @@
 import json
 import time
 import requests
+from struct import unpack, pack
 
 MDNS_TEMPLATE = r'http://{0}:{1}@eagle-{0}.local/cgi-bin/post_manager'
 ADDR_TEMPLATE = r'http://{0}:{1}@{2}/cgi-bin/post_manager'
@@ -48,7 +49,7 @@ class Eagle(object):
     def make_cmd(self, command, **kws):
         cmd_str = CMD_TOP_TEMPLATE.format(command)
 
-        for k,v in kws.items():
+        for k, v in kws.items():
             cmd_str += '<{0}>{1!s}</{0}>\n'.format(k, v)
 
         cmd_str += '</Command>\n'
@@ -127,7 +128,7 @@ def process_data(d):
     types / apply conversions.
     '''
     # Handle nested dictionaries
-    for k,v in d.items():
+    for v in d.values():
         if isinstance(v, dict):
             process_data(v)
         elif isinstance(v, list):
@@ -148,12 +149,16 @@ def process_data(d):
 def convert_demand(d):
     'Parse values and remove extraneous keys from demand responses.'
     factor = max(int(d['Multiplier'], 0), 1) / max(int(d['Divisor'], 0), 1)
+    n_dec = int(d['DigitsRight'], 0)
 
     if 'Demand' in d:
-        d['Demand'] = int(d['Demand'], 0) * factor
+        demand = int(d['Demand'], 0)
+        bytes_demand = pack('>I', demand)
+        new_int_demand = unpack('>i', bytes_demand)[0]
+        d['Demand'] = round(new_int_demand*factor, n_dec)
     else:
-        d['SummationDelivered'] = int(d['SummationDelivered'], 0) * factor
-        d['SummationReceived'] = int(d['SummationReceived'], 0) * factor
+        d['SummationDelivered'] = round(int(d['SummationDelivered'], 0)*factor, n_dec)
+        d['SummationReceived'] = round(int(d['SummationReceived'], 0)*factor, n_dec)
 
     del d['Multiplier']
     del d['Divisor']
@@ -175,9 +180,7 @@ def TEMP_RESPONSE_FIX(s):
     The EAGLE API provides malformed responses for some commands.  This
     function tries to fix them (until the firmware is patched).
     '''
-    if s.startswith('\"HistoryData\"'):
-        return '{' + s + '}'
-    elif s.startswith('\"ScheduleList\"'):
+    if s.startswith('\"HistoryData\"') or s.startswith('\"ScheduleList\"'):
         return '{' + s + '}'
     return s
 
