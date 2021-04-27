@@ -63,11 +63,20 @@ class Eagle(object):
         response = requests.post(self.addr,
                                  headers=self._headers,
                                  data=post_data)
+
         if response.status_code == 503:
             response = ATTEMPT_TO_UNSTICK_EAGLE(self, command, response.text, **kws)
+            
+        if response.status_code != 200:
+            response.raise_for_status()
 
         response_text = TEMP_RESPONSE_FIX(response.text)
-        data = json.loads(response_text)
+
+        try:
+            data = json.loads(response_text)
+        except ValueError as error:
+            raise ValueError("Invalid JSON format: %s", error)
+
         process_data(data)
         return data
 
