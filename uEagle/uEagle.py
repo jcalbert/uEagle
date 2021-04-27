@@ -1,5 +1,6 @@
 import json
 import time
+import logging
 import requests
 from struct import unpack, pack
 
@@ -9,6 +10,8 @@ ADDR_TEMPLATE = r'http://{0}:{1}@{2}/cgi-bin/post_manager'
 CMD_TOP_TEMPLATE = r'''<Command>\n
                    <Name>{0!s}</Name>\n
                    <Format>JSON</Format>'''
+
+_LOGGER = logging.getLogger(__name__)
 
 # Options
 SAFETY_ON = True
@@ -60,8 +63,11 @@ class Eagle(object):
         response = requests.post(self.addr,
                                  headers=self._headers,
                                  data=post_data)
-        
-        if(response.status_code != 200):
+
+        if response.status_code == 503:
+            response = ATTEMPT_TO_UNSTICK_EAGLE(self, command, response.text, **kws)
+            
+        if response.status_code != 200:
             response.raise_for_status()
 
         response_text = TEMP_RESPONSE_FIX(response.text)
@@ -191,6 +197,49 @@ def TEMP_RESPONSE_FIX(s):
     if s.startswith('\"HistoryData\"') or s.startswith('\"ScheduleList\"'):
         return '{' + s + '}'
     return s
+
+def ATTEMPT_TO_UNSTICK_EAGLE(self, command, orig_response, **kws):
+    '''
+    By the process of trial and error...
+    It seems that sending a 'get_historical_data' request using the alternate
+    cgi_manager endpoint (same endpoint used by the web pages), we can
+    "unstick" the server and in a few seconds it will start responding to
+    requests again.
+    '''
+
+    # First we do a short pause and simply try again
+    time.sleep(1)
+    post_data = self.make_cmd(command, **kws)
+    response = requests.post(self.addr,
+                             headers=self._headers,
+                             data=post_data)
+    if response.status_code == 200:
+        _LOGGER.warning("Eagle success after retry (original response: %s)", orig_response)
+        return response
+
+    # Try to unstick by issuing the same get_historical_data command used by the web page
+    post_data = self.make_cmd("get_historical_data", **kws)
+    alt_address = self.addr.replace("post_manager", "cgi_manager")
+    response = requests.post(alt_address,
+                             headers=self._headers,
+                             data=post_data)
+
+    if response.status_code == 200:
+        # If that was successful (but probably an empty response), wait a bit for it to recover
+        time.sleep(15) # Eagle seems to take some time to 'wake up' from the bad state
+        # Re-issue the original command
+        post_data = self.make_cmd(command, **kws)
+        response = requests.post(self.addr,
+                                 headers=self._headers,
+                                 data=post_data)
+        if response.status_code == 200:
+            _LOGGER.warning("Eagle 'unstick' successful: %s (original response: %s)", response.text, orig_response)
+        else: # Note: at this point it is possible it's working again but requires a bit more time
+            _LOGGER.error("Eagle 'unstick' failed: %s [%s], (original response: %s)", response.text, response.status_code, orig_response)
+    else:
+        _LOGGER.error("Eagle 'unstick' attempt failed: %s [%s]", response.text, response.status_code)
+
+    return response
 
 #notes
 #More recent API (1.1) supports command list_network
